@@ -1,0 +1,132 @@
+//@version=5
+indicator("5 & 9 EMA Crossover Scanner", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUT SECTION - Well Grouped Parameters
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// === EMA Settings ===
+emaGroup = "EMA Settings"
+ema5Length = input.int(5, "Fast EMA Length", minval=1, group=emaGroup)
+ema9Length = input.int(9, "Slow EMA Length", minval=1, group=emaGroup)
+
+// === Display Options ===
+displayGroup = "Display Options"
+showEma5 = input.bool(true, "Show Fast EMA Line", group=displayGroup)
+showEma9 = input.bool(true, "Show Slow EMA Line", group=displayGroup)
+showSignals = input.bool(true, "Show Crossover Signals", group=displayGroup)
+showLabels = input.bool(true, "Show Signal Labels", group=displayGroup)
+
+// === Color Settings ===
+colorGroup = "Color Settings"
+ema5Color = input.color(color.new(color.blue, 0), "Fast EMA Color", group=colorGroup)
+ema9Color = input.color(color.new(color.red, 0), "Slow EMA Color", group=colorGroup)
+bullishColor = input.color(color.new(color.green, 0), "Bullish Signal Color", group=colorGroup)
+bearishColor = input.color(color.new(color.red, 0), "Bearish Signal Color", group=colorGroup)
+
+// === Scanner Settings ===
+scannerGroup = "Multi-Symbol Scanner (20 Securities)"
+enableScanner = input.bool(true, "Enable Scanner", group=scannerGroup)
+symbol1 = input.symbol("NASDAQ:AAPL", "Symbol 1", group=scannerGroup)
+symbol2 = input.symbol("NASDAQ:MSFT", "Symbol 2", group=scannerGroup)
+symbol3 = input.symbol("NASDAQ:GOOGL", "Symbol 3", group=scannerGroup)
+symbol4 = input.symbol("NASDAQ:AMZN", "Symbol 4", group=scannerGroup)
+symbol5 = input.symbol("NASDAQ:TSLA", "Symbol 5", group=scannerGroup)
+symbol6 = input.symbol("NASDAQ:META", "Symbol 6", group=scannerGroup)
+symbol7 = input.symbol("NASDAQ:NVDA", "Symbol 7", group=scannerGroup)
+symbol8 = input.symbol("NYSE:JPM", "Symbol 8", group=scannerGroup)
+symbol9 = input.symbol("NYSE:V", "Symbol 9", group=scannerGroup)
+symbol10 = input.symbol("NYSE:WMT", "Symbol 10", group=scannerGroup)
+symbol11 = input.symbol("NYSE:JNJ", "Symbol 11", group=scannerGroup)
+symbol12 = input.symbol("NYSE:PG", "Symbol 12", group=scannerGroup)
+symbol13 = input.symbol("NASDAQ:NFLX", "Symbol 13", group=scannerGroup)
+symbol14 = input.symbol("NASDAQ:ADBE", "Symbol 14", group=scannerGroup)
+symbol15 = input.symbol("NYSE:DIS", "Symbol 15", group=scannerGroup)
+symbol16 = input.symbol("NASDAQ:INTC", "Symbol 16", group=scannerGroup)
+symbol17 = input.symbol("NYSE:BA", "Symbol 17", group=scannerGroup)
+symbol18 = input.symbol("NASDAQ:CSCO", "Symbol 18", group=scannerGroup)
+symbol19 = input.symbol("NYSE:XOM", "Symbol 19", group=scannerGroup)
+symbol20 = input.symbol("NYSE:CVX", "Symbol 20", group=scannerGroup)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CALCULATION SECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Calculate EMAs for current chart
+ema5 = ta.ema(close, ema5Length)
+ema9 = ta.ema(close, ema9Length)
+
+// Detect crossovers
+bullishCross = ta.crossover(ema5, ema9)  // Fast EMA crosses above Slow EMA
+bearishCross = ta.crossunder(ema5, ema9) // Fast EMA crosses below Slow EMA
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISUALIZATION SECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Plot EMA lines
+plot(showEma5 ? ema5 : na, "Fast EMA (5)", color=ema5Color, linewidth=2)
+plot(showEma9 ? ema9 : na, "Slow EMA (9)", color=ema9Color, linewidth=2)
+
+// Plot crossover signals
+plotshape(showSignals and bullishCross, "Bullish Cross", shape.triangleup, location.belowbar, bullishColor, size=size.small)
+plotshape(showSignals and bearishCross, "Bearish Cross", shape.triangledown, location.abovebar, bearishColor, size=size.small)
+
+// Add labels for signals
+if showLabels and bullishCross
+    label.new(bar_index, low, "BUY", color=bullishColor, textcolor=color.white, style=label.style_label_up, size=size.small)
+
+if showLabels and bearishCross
+    label.new(bar_index, high, "SELL", color=bearishColor, textcolor=color.white, style=label.style_label_down, size=size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCANNER SECTION - Multi-Symbol Analysis
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Function to check crossover for external symbol
+checkCrossover(symbol) =>
+    ema5_ext = request.security(symbol, timeframe.period, ta.ema(close, ema5Length))
+    ema9_ext = request.security(symbol, timeframe.period, ta.ema(close, ema9Length))
+    bullish = ta.crossover(ema5_ext, ema9_ext)
+    bearish = ta.crossunder(ema5_ext, ema9_ext)
+    [bullish, bearish, ema5_ext, ema9_ext]
+
+// Create scanner table
+if enableScanner
+    var table scannerTable = table.new(position.bottom_right, 4, 21, bgcolor=color.new(color.gray, 90), border_width=1)
+
+    // Table headers
+    if barstate.islast
+        table.cell(scannerTable, 0, 0, "Symbol", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+        table.cell(scannerTable, 1, 0, "Signal", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+        table.cell(scannerTable, 2, 0, "Fast EMA", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+        table.cell(scannerTable, 3, 0, "Slow EMA", text_color=color.white, bgcolor=color.new(color.gray, 70), text_size=size.small)
+
+        // Scan all 20 symbols
+        symbols = array.from(symbol1, symbol2, symbol3, symbol4, symbol5, symbol6, symbol7, symbol8, symbol9, symbol10,
+                             symbol11, symbol12, symbol13, symbol14, symbol15, symbol16, symbol17, symbol18, symbol19, symbol20)
+
+        for i = 0 to array.size(symbols) - 1
+            sym = array.get(symbols, i)
+            [bull, bear, e5, e9] = checkCrossover(sym)
+
+            // Extract symbol name (remove exchange prefix)
+            symName = str.split(sym, ":")[1]
+
+            // Determine signal
+            signal = bull ? "🔼 BUY" : bear ? "🔽 SELL" : e5 > e9 ? "↑ Bullish" : "↓ Bearish"
+            signalColor = bull ? color.new(color.green, 50) : bear ? color.new(color.red, 50) : e5 > e9 ? color.new(color.blue, 80) : color.new(color.orange, 80)
+
+            // Populate table
+            table.cell(scannerTable, 0, i + 1, symName, text_color=color.white, text_size=size.tiny)
+            table.cell(scannerTable, 1, i + 1, signal, text_color=color.white, bgcolor=signalColor, text_size=size.tiny)
+            table.cell(scannerTable, 2, i + 1, str.tostring(e5, "#.##"), text_color=color.white, text_size=size.tiny)
+            table.cell(scannerTable, 3, i + 1, str.tostring(e9, "#.##"), text_color=color.white, text_size=size.tiny)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Alert conditions for automated trading
+alertcondition(bullishCross, title="Bullish Crossover", message="5 EMA crossed above 9 EMA - Bullish Signal on {{ticker}}")
+alertcondition(bearishCross, title="Bearish Crossover", message="5 EMA crossed below 9 EMA - Bearish Signal on {{ticker}}")
